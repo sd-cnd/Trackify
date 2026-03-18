@@ -46,6 +46,7 @@ EXTERNAL_APPS = [
     'leaves',
     'organization',
     'common',
+    'rest_framework',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + EXTERNAL_APPS

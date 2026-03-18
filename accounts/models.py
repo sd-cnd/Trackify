@@ -56,7 +56,7 @@ class Employee(AbstractBaseUser, PermissionsMixin, BaseModel):
 
     name = models.CharField(max_length=150)
 
-    designation = models.CharField(max_length=100)
+    designation = models.CharField(max_length=100, blank=True)
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
