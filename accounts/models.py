@@ -50,7 +50,7 @@ class Employee(AbstractBaseUser, PermissionsMixin, BaseModel):
         ("EMPLOYEE", "Employee"),
     ]
 
-    employee_id = models.CharField(max_length=20, unique=True)  # Business ID
+    employee_id = models.CharField(max_length=20, unique=True, blank=True)  # Business ID
 
     email = models.EmailField(unique=True)  # Login
 
@@ -78,6 +78,11 @@ class Employee(AbstractBaseUser, PermissionsMixin, BaseModel):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["name"]  # 'employee_id' is auto-generated, so not required here
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            self.employee_id = Employee.objects.generate_employee_id()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.employee_id} - {self.name}"
