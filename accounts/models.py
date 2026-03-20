@@ -81,7 +81,7 @@ class Employee(AbstractBaseUser, PermissionsMixin, BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
-            self.employee_id = Employee.objects.generate_employee_id()
+            self.employee_id = self.__class__.objects.generate_employee_id()
         super().save(*args, **kwargs)
 
     def __str__(self):

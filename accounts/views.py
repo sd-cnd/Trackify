@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.exceptions import PermissionDenied
 
 # =========================
 # Employee ViewSet
@@ -68,8 +69,18 @@ def login_view(request):
         "role": user.role
     })
 
+@csrf_exempt
 @api_view(["POST"])
-@authentication_classes([])
+@permission_classes([IsAuthenticated])
 def logout_view(request):
     logout(request)
     return Response({"message": "Logged out successfully"})
+
+def perform_update(self, serializer):
+    user = self.request.user
+    instance = self.get_object()
+
+    if user.role != "GLOBAL_HR" and instance != user:
+        raise PermissionDenied("You cannot update other employees")
+
+    serializer.save()

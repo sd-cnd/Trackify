@@ -8,7 +8,7 @@ class EmployeeAdmin(UserAdmin):
 
     model = Employee
 
-    list_display = ("employee_id", "email", "name", "role", "is_staff")
+    list_display = ("id", "employee_id", "email", "name", "role", "is_staff")
 
     search_fields = ("email", "name", "employee_id")
 
