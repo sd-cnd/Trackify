@@ -28,7 +28,13 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         employee = data.get("employee")
+        start_date = data.get("start_date")
         end_date = data.get("end_date")
+
+        if end_date and start_date > end_date:
+            raise serializers.ValidationError(
+                "End date must be after start date."
+            )
 
         # If membership is active (end_date is null)
         if end_date is None:

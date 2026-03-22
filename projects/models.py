@@ -1,6 +1,7 @@
 from django.db import models
 from common.models import BaseModel
 from accounts.models import Employee
+from django.db.models import Q
 
 
 class Project(BaseModel):
@@ -69,3 +70,14 @@ class ProjectMembership(BaseModel):
 
     def __str__(self):
         return f"{self.employee.name} -> {self.project.project_name}"
+    
+    class Meta:
+        constraints = [
+            # CRITICAL BUSINESS RULE
+            # Only ONE active membership (end_date = NULL) per employee
+            models.UniqueConstraint(
+                fields=["employee"],
+                condition=Q(end_date__isnull=True),
+                name="unique_active_membership_per_employee"
+            )
+        ]

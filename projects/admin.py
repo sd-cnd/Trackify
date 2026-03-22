@@ -40,6 +40,7 @@ class ProjectAdminForm(forms.ModelForm):
 class ProjectAdmin(admin.ModelAdmin):
     form = ProjectAdminForm
     list_display = (
+        "id",
         "project_name",
         "project_type",
         "supervisor",
@@ -65,6 +66,34 @@ class ProjectAdmin(admin.ModelAdmin):
 # -------------------------
 @admin.register(ProjectMembership)
 class ProjectMembershipAdmin(admin.ModelAdmin):
-    list_display = ("employee", "project", "role", "start_date", "end_date")
+    list_display = ("employee", "project", "role", "start_date", "end_date", "is_active")
     list_filter = ("role", "project")
     search_fields = ("employee__name", "project__project_name")
+
+    def is_active(self, obj):
+        return obj.end_date is None
+
+    is_active.boolean = True
+
+    def get_queryset(self, request):
+        """
+        Controls what data is visible in Django Admin
+        based on user role.
+        """
+
+        qs = super().get_queryset(request)
+
+        # Superuser sees everything
+        if request.user.is_superuser:
+            return qs
+
+        # GLOBAL_HR sees everything
+        if request.user.role == "GLOBAL_HR":
+            return qs
+
+        # PROJECT_HR sees only memberships of their projects
+        if request.user.role == "PROJECT_HR":
+            return qs.filter(project__hr=request.user)
+
+        # Normal employee sees only their own data
+        return qs.filter(employee=request.user)
