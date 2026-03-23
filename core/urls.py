@@ -9,4 +9,5 @@ urlpatterns = [
 
     # Projects
     path('api/projects/', include('projects.urls')),
+    path("api/attendance/", include("attendance.urls")),
 ]

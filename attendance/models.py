@@ -3,6 +3,9 @@ from common.models import BaseModel
 from accounts.models import Employee
 from projects.models import Project
 
+from django.core.exceptions import ValidationError
+from .utils import can_mark_attendance
+
 
 class Attendance(BaseModel):
 
@@ -35,3 +38,13 @@ class Attendance(BaseModel):
 
     def __str__(self):
         return f"{self.employee.name} - {self.date}"
+    
+    def clean(self):
+        allowed, message = can_mark_attendance(self.employee, self.date)
+
+        if not allowed:
+            raise ValidationError(message)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
