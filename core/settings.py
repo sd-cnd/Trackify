@@ -47,6 +47,7 @@ EXTERNAL_APPS = [
     'organization',
     'common',
     'rest_framework',
+    'drf_yasg',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + EXTERNAL_APPS
