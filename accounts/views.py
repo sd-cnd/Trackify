@@ -1,16 +1,18 @@
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Employee
 from .serializers import EmployeeSerializer
 from .permissions import IsGlobalHR
+
 from django.contrib.auth import authenticate, login, logout
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
+
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.exceptions import PermissionDenied
+
 
 # =========================
 # Employee ViewSet
@@ -22,7 +24,6 @@ class EmployeeViewSet(ModelViewSet):
     serializer_class = EmployeeSerializer
 
     def get_permissions(self):
-
         if self.action in ["create", "destroy"]:
             permission_classes = [IsAuthenticated, IsGlobalHR]
         else:
@@ -33,13 +34,27 @@ class EmployeeViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    # ✅ FIXED: moved inside class
+    def perform_update(self, serializer):
+        user = self.request.user
+        instance = self.get_object()
+
+        # Only GLOBAL_HR can update anyone
+        # Others can only update themselves
+        if user.role != "GLOBAL_HR" and instance != user:
+            raise PermissionDenied("You cannot update other employees")
+
+        # Preserve created_by (important fix)
+        serializer.save(created_by=instance.created_by)
+
+
 # =========================
 # Authentication APIs
 # =========================
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@authentication_classes([]) 
+@authentication_classes([])
 def login_view(request):
     email = request.data.get("email")
     password = request.data.get("password")
@@ -69,18 +84,10 @@ def login_view(request):
         "role": user.role
     })
 
+
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     logout(request)
     return Response({"message": "Logged out successfully"})
-
-def perform_update(self, serializer):
-    user = self.request.user
-    instance = self.get_object()
-
-    if user.role != "GLOBAL_HR" and instance != user:
-        raise PermissionDenied("You cannot update other employees")
-
-    serializer.save()

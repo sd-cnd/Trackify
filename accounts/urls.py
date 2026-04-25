@@ -14,6 +14,6 @@ urlpatterns = [
     path("", include(router.urls)),
 
     # Auth APIs
-    path("login/", login_view),
-    path("logout/", logout_view),
+    path("login/", login_view, name="login"),
+    path("logout/", logout_view, name="logout"),
 ]
