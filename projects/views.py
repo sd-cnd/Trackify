@@ -17,19 +17,15 @@ class ProjectViewSet(ModelViewSet):
     serializer_class = ProjectSerializer
 
     def get_permissions(self):
-        """
-        Dynamically assign permissions based on action.
-        """
+        if not self.request.user or not self.request.user.is_authenticated:
+            return [IsAuthenticated()]
 
-        # 🔒 Only PROJECT_HR can create or delete
-        if self.action in ["create", "destroy"]:
-            permission_classes = [IsAuthenticated, IsProjectHR]
+        # Only PROJECT_HR can modify (create/update/delete)
+        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
+            return [IsAuthenticated(), IsProjectHR()]
 
-        # 👀 Others can read/update (can refine later)
-        else:
-            permission_classes = [IsAuthenticated]
-
-        return [permission() for permission in permission_classes]
+        # Read allowed for all authenticated users
+        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         """

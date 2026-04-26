@@ -9,15 +9,15 @@ class IsProjectHR(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        # Safe methods allowed for all
+        # Safe methods → allow
         if request.method in ["GET", "HEAD", "OPTIONS"]:
             return True
 
-        # Create/Delete allowed only for PROJECT_HR
-        if request.method in ["POST", "DELETE"]:
+        # Restrict ALL write operations
+        if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
             return request.user.role == "PROJECT_HR"
 
-        return True
+        return False
     
 class IsProjectHRForMembership(BasePermission):
     """

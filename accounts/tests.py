@@ -216,7 +216,7 @@ class EmployeeTests(APITestCase):
 
         response = self.client.put(url, data, format="json")
 
-        print(response.data)
+        # print(response.data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["name"], "HR Updated Name")
