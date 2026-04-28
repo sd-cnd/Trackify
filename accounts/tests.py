@@ -3,6 +3,8 @@ from rest_framework import status
 from django.urls import reverse
 from .models import Employee
 
+from django.db import IntegrityError, transaction
+
 
 # =========================
 # AUTH TESTS

@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.db import IntegrityError
+
 from .models import Attendance
 from .utils import can_mark_attendance
 
@@ -18,3 +20,11 @@ class AttendanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(message)
 
         return data
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                "Attendance already marked for this date."
+            )

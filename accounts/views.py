@@ -34,7 +34,7 @@ class EmployeeViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
-    # ✅ FIXED: moved inside class
+    # FIXED: moved inside class
     def perform_update(self, serializer):
         user = self.request.user
         instance = self.get_object()

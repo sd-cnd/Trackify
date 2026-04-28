@@ -5,8 +5,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import CreateAPIView
 
 from .models import Attendance
+from .serializers import AttendanceSerializer
 from accounts.models import Employee
 from organization.models import Holiday
 from leaves.models import Leave
@@ -19,36 +21,38 @@ class MonthlyAttendanceView(APIView):
 
     def get(self, request):
 
-        user = request.user  # logged-in employee
-
+        user = request.user
         employee_id = request.GET.get("employee")
-        month = int(request.GET.get("month"))
-        year = int(request.GET.get("year"))
 
         if not employee_id:
             return Response({"error": "employee is required"}, status=400)
+
+        try:
+            month = int(request.GET.get("month"))
+            year = int(request.GET.get("year"))
+
+            if month < 1 or month > 12:
+                return Response({"error": "Invalid month"}, status=400)
+
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid month/year"}, status=400)
 
         try:
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return Response({"error": "Invalid employee"}, status=404)
 
-        # 🔐 ROLE-BASED ACCESS CONTROL
+        # 🔐 ROLE-BASED ACCESS
 
-        # EMPLOYEE → only self
         if user.role == "EMPLOYEE":
             if user.id != employee.id:
                 return Response({"error": "Not allowed"}, status=403)
 
-        # PROJECT_HR → only employees in their projects
         elif user.role == "PROJECT_HR":
-
-            # Get projects where this HR is a member
             hr_projects = ProjectMembership.objects.filter(
                 employee=user
             ).values_list("project_id", flat=True)
 
-            # Check if target employee is in any of those projects
             is_allowed = ProjectMembership.objects.filter(
                 employee=employee,
                 project_id__in=hr_projects
@@ -57,27 +61,20 @@ class MonthlyAttendanceView(APIView):
             if not is_allowed:
                 return Response({"error": "Not allowed"}, status=403)
 
-        # GLOBAL_HR → full access
         elif user.role == "GLOBAL_HR":
             pass
-
-        # (Optional) SUPERVISOR → restrict later
         else:
             return Response({"error": "Role not supported"}, status=403)
 
-        # 📅 MONTH CALCULATION
         num_days = calendar.monthrange(year, month)[1]
 
-        # 📊 FETCH ATTENDANCE
         attendance_qs = Attendance.objects.filter(
             employee=employee,
             date__year=year,
             date__month=month
         )
 
-        attendance_map = {
-            att.date: att for att in attendance_qs
-        }
+        attendance_map = {att.date: att for att in attendance_qs}
 
         result = []
 
@@ -92,13 +89,10 @@ class MonthlyAttendanceView(APIView):
                     "check_in": att.check_in_time,
                     "check_out": att.check_out_time,
                 })
-
             else:
-                # Holiday check
                 if Holiday.objects.filter(date=current_date).exists():
                     status_val = "HOLIDAY"
 
-                # Leave check
                 elif Leave.objects.filter(
                     employee=employee,
                     status="APPROVED",
@@ -118,3 +112,50 @@ class MonthlyAttendanceView(APIView):
                 })
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+# ✅ FIXED CREATE API
+class AttendanceCreateView(CreateAPIView):
+    queryset = Attendance.objects.all()
+    serializer_class = AttendanceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        employee_id = request.data.get("employee")
+
+        # ❗ employee required
+        if not employee_id:
+            return Response({"error": "employee is required"}, status=400)
+
+        try:
+            employee = Employee.objects.get(id=employee_id)
+        except Employee.DoesNotExist:
+            return Response({"error": "Invalid employee"}, status=404)
+
+        # 🔐 ROLE-BASED ACCESS (same logic as view API)
+
+        if user.role == "EMPLOYEE":
+            if user.id != employee.id:
+                return Response({"error": "Not allowed"}, status=403)
+
+        elif user.role == "PROJECT_HR":
+            hr_projects = ProjectMembership.objects.filter(
+                employee=user
+            ).values_list("project_id", flat=True)
+
+            is_allowed = ProjectMembership.objects.filter(
+                employee=employee,
+                project_id__in=hr_projects
+            ).exists()
+
+            if not is_allowed:
+                return Response({"error": "Not allowed"}, status=403)
+
+        elif user.role == "GLOBAL_HR":
+            pass
+        else:
+            return Response({"error": "Role not supported"}, status=403)
+
+        # ✅ normal DRF flow
+        return super().create(request, *args, **kwargs)
