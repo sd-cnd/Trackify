@@ -1,11 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, serializers
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from datetime import date
 import calendar
 
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .models import Leave, LeaveQuota
 from accounts.models import Employee
@@ -13,10 +15,28 @@ from projects.models import ProjectMembership
 
 
 # -----------------------------
+# Swagger Serializers
+# -----------------------------
+
+class ApplyLeaveSerializer(serializers.Serializer):
+    leave_type = serializers.CharField()
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+
+
+class ApproveLeaveSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(choices=["APPROVED", "REJECTED"])
+
+
+# -----------------------------
 # APPLY LEAVE
 # -----------------------------
 class ApplyLeaveView(APIView):
 
+    @swagger_auto_schema(
+        request_body=ApplyLeaveSerializer,
+        responses={200: "Leave applied successfully"}
+    )
     def post(self, request):
         user = request.user
 
@@ -59,6 +79,14 @@ class MyLeavesView(APIView):
 # -----------------------------
 class ApproveLeaveView(APIView):
 
+    @swagger_auto_schema(
+        request_body=ApproveLeaveSerializer,
+        responses={
+            200: "Leave approved/rejected successfully",
+            400: "Invalid action",
+            403: "Not authorized"
+        }
+    )
     def patch(self, request, pk):
         user = request.user
 
@@ -78,24 +106,14 @@ class ApproveLeaveView(APIView):
 
         return Response({"message": f"Leave {action.lower()} successfully"})
 
-
-    # -----------------------------
-    # RBAC LOGIC (FINAL)
-    # -----------------------------
     def can_approve(self, user, leave):
-
-        # GLOBAL HR → full access
         if user.role == "GLOBAL_HR":
             return True
 
-        # PROJECT HR logic
         if user.role == "PROJECT_HR":
-
-            # Cannot approve HRs or Global HR
             if leave.employee.role in ["PROJECT_HR", "GLOBAL_HR"]:
                 return False
 
-            # Check if both belong to same project (ACTIVE membership)
             return ProjectMembership.objects.filter(
                 employee=leave.employee,
                 project__hr=user,
@@ -110,6 +128,17 @@ class ApproveLeaveView(APIView):
 # -----------------------------
 class LeaveBalanceView(APIView):
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'year',
+                openapi.IN_QUERY,
+                description="Year to fetch leave balance for (default: current year)",
+                type=openapi.TYPE_INTEGER
+            )
+        ],
+        responses={200: "Leave balance data", 404: "Quota not found"}
+    )
     def get(self, request):
         user = request.user
         year = request.query_params.get("year", date.today().year)
@@ -156,11 +185,9 @@ class TeamLeavesView(APIView):
     def get(self, request):
         user = request.user
 
-        # GLOBAL HR → see all
         if user.role == "GLOBAL_HR":
             leaves = Leave.objects.all()
 
-        # PROJECT HR → only their project employees
         elif user.role == "PROJECT_HR":
             employee_ids = ProjectMembership.objects.filter(
                 project__hr=user,
@@ -201,7 +228,6 @@ class TodayOnLeaveView(APIView):
             end_date__gte=today
         )
 
-        # Apply RBAC
         if user.role == "GLOBAL_HR":
             pass
 
@@ -227,12 +253,30 @@ class TodayOnLeaveView(APIView):
         ]
 
         return Response(data)
-    
 
 
-
+# -----------------------------
+# MONTHLY CALENDAR
+# -----------------------------
 class MonthlyCalendarView(APIView):
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'month',
+                openapi.IN_QUERY,
+                description="Month number (1-12, default: current month)",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'year',
+                openapi.IN_QUERY,
+                description="Year (default: current year)",
+                type=openapi.TYPE_INTEGER
+            ),
+        ],
+        responses={200: "Monthly calendar with leave data"}
+    )
     def get(self, request):
         user = request.user
 
@@ -241,14 +285,12 @@ class MonthlyCalendarView(APIView):
 
         _, num_days = calendar.monthrange(year, month)
 
-        # Base queryset: approved leaves overlapping month
         leaves = Leave.objects.filter(
             status="APPROVED",
             start_date__lte=date(year, month, num_days),
             end_date__gte=date(year, month, 1)
         )
 
-        # RBAC filtering
         if user.role == "GLOBAL_HR":
             pass
 
@@ -263,7 +305,6 @@ class MonthlyCalendarView(APIView):
         else:
             leaves = leaves.filter(employee=user)
 
-        # Build calendar response
         calendar_data = {}
 
         for day in range(1, num_days + 1):
@@ -287,4 +328,3 @@ class MonthlyCalendarView(APIView):
             "year": year,
             "calendar": calendar_data
         })
-

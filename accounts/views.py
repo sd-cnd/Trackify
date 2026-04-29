@@ -1,17 +1,39 @@
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import serializers, filters
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
+
+from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import csrf_exempt
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 from .models import Employee
 from .serializers import EmployeeSerializer
 from .permissions import IsGlobalHR
 
-from django.contrib.auth import authenticate, login, logout
 
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
-from rest_framework.response import Response
-from rest_framework import status
+# =========================
+# Swagger Serializers
+# =========================
 
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.exceptions import PermissionDenied
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    user_id = serializers.IntegerField()
+    employee_id = serializers.CharField()
+    email = serializers.EmailField()
+    name = serializers.CharField()
+    role = serializers.CharField()
 
 
 # =========================
@@ -23,28 +45,30 @@ class EmployeeViewSet(ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
 
+    # 👇 Filtering, searching, ordering
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['role', 'designation']
+    search_fields = ['name', 'email', 'employee_id']
+    ordering_fields = ['name', 'date_of_joining']
+    ordering = ['date_of_joining']
+
     def get_permissions(self):
         if self.action in ["create", "destroy"]:
             permission_classes = [IsAuthenticated, IsGlobalHR]
         else:
             permission_classes = [IsAuthenticated]
-
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
-    # FIXED: moved inside class
     def perform_update(self, serializer):
         user = self.request.user
         instance = self.get_object()
 
-        # Only GLOBAL_HR can update anyone
-        # Others can only update themselves
         if user.role != "GLOBAL_HR" and instance != user:
             raise PermissionDenied("You cannot update other employees")
 
-        # Preserve created_by (important fix)
         serializer.save(created_by=instance.created_by)
 
 
@@ -52,6 +76,15 @@ class EmployeeViewSet(ModelViewSet):
 # Authentication APIs
 # =========================
 
+@swagger_auto_schema(
+    method='post',
+    request_body=LoginSerializer,
+    responses={
+        200: LoginResponseSerializer,
+        400: "Email and password required",
+        401: "Invalid credentials"
+    }
+)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @authentication_classes([])
@@ -85,6 +118,13 @@ def login_view(request):
     })
 
 
+@swagger_auto_schema(
+    method='post',
+    responses={
+        200: openapi.Response("Logged out successfully"),
+        401: "Unauthorized"
+    }
+)
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])

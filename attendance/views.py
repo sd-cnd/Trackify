@@ -7,6 +7,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import CreateAPIView
 
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 from .models import Attendance
 from .serializers import AttendanceSerializer
 from accounts.models import Employee
@@ -19,6 +22,37 @@ class MonthlyAttendanceView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'employee',
+                openapi.IN_QUERY,
+                description="Employee ID (required)",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+            openapi.Parameter(
+                'month',
+                openapi.IN_QUERY,
+                description="Month number (1-12)",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+            openapi.Parameter(
+                'year',
+                openapi.IN_QUERY,
+                description="Year (e.g. 2024)",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+        ],
+        responses={
+            200: "Monthly attendance data",
+            400: "Invalid month/year or missing employee",
+            403: "Not allowed",
+            404: "Invalid employee"
+        }
+    )
     def get(self, request):
 
         user = request.user
@@ -124,7 +158,6 @@ class AttendanceCreateView(CreateAPIView):
         user = request.user
         employee_id = request.data.get("employee")
 
-        # ❗ employee required
         if not employee_id:
             return Response({"error": "employee is required"}, status=400)
 
@@ -133,7 +166,7 @@ class AttendanceCreateView(CreateAPIView):
         except Employee.DoesNotExist:
             return Response({"error": "Invalid employee"}, status=404)
 
-        # 🔐 ROLE-BASED ACCESS (same logic as view API)
+        # 🔐 ROLE-BASED ACCESS
 
         if user.role == "EMPLOYEE":
             if user.id != employee.id:

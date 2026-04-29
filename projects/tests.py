@@ -176,7 +176,7 @@ class ProjectMembershipTests(APITestCase):
 
         response = self.client.get(self.membership_url)
 
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data['results']), 1)
 
     def test_project_hr_sees_only_their_projects(self):
         ProjectMembership.objects.create(
@@ -190,7 +190,7 @@ class ProjectMembershipTests(APITestCase):
 
         response = self.client.get(self.membership_url)
 
-        self.assertEqual(len(response.data), 1)
+        self.assertEqual(len(response.data['results']), 1)
 
 
     # Unauthenticated Access
@@ -312,7 +312,7 @@ class ProjectMembershipTests(APITestCase):
         response = self.client.get(self.membership_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(len(response.data['results']), 0)
 
     # DB Constraint Test
     def test_db_constraint_allows_only_one_active_membership(self):
