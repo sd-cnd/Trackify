@@ -143,3 +143,7 @@ SWAGGER_SETTINGS = {
     'DOC_EXPANSION': 'list',
     'PERSIST_AUTH': True,
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+]
