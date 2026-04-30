@@ -46,11 +46,11 @@ class Attendance(BaseModel):
         if not allowed:
             raise ValidationError(message)
 
-        # ✅ Future date validation
+        # Future date validation
         if self.date > dt_date.today():
             raise ValidationError("Cannot mark attendance for future date.")
 
-        # ✅ Time validation
+        # Time validation
         if self.check_in_time and self.check_out_time:
             if self.check_out_time <= self.check_in_time:
                 raise ValidationError("Check-out must be after check-in.")

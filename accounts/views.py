@@ -7,8 +7,10 @@ from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 
 from django_filters.rest_framework import DjangoFilterBackend
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
+
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -28,7 +30,8 @@ class LoginSerializer(serializers.Serializer):
 
 
 class LoginResponseSerializer(serializers.Serializer):
-    message = serializers.CharField()
+    access = serializers.CharField()
+    refresh = serializers.CharField()
     user_id = serializers.IntegerField()
     employee_id = serializers.CharField()
     email = serializers.EmailField()
@@ -45,7 +48,6 @@ class EmployeeViewSet(ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
 
-    # 👇 Filtering, searching, ordering
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['role', 'designation']
     search_fields = ['name', 'email', 'employee_id']
@@ -78,11 +80,16 @@ class EmployeeViewSet(ModelViewSet):
 
 @swagger_auto_schema(
     method='post',
+    operation_summary="Login",
+    operation_description="Authenticate with email and password to receive JWT access and refresh tokens.",
     request_body=LoginSerializer,
     responses={
-        200: LoginResponseSerializer,
-        400: "Email and password required",
-        401: "Invalid credentials"
+        200: openapi.Response(
+            description="Login successful. Returns JWT access and refresh tokens along with user details.",
+            schema=LoginResponseSerializer
+        ),
+        400: openapi.Response(description="Bad Request. Email and password are required."),
+        401: openapi.Response(description="Unauthorized. Invalid email or password."),
     }
 )
 @api_view(["POST"])
@@ -106,10 +113,12 @@ def login_view(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    login(request, user)
+    refresh = RefreshToken.for_user(user)
+    access = str(refresh.access_token)
 
     return Response({
-        "message": "Login successful",
+        "access": access,
+        "refresh": str(refresh),
         "user_id": user.id,
         "employee_id": user.employee_id,
         "email": user.email,
@@ -120,14 +129,32 @@ def login_view(request):
 
 @swagger_auto_schema(
     method='post',
+    operation_summary="Logout",
+    operation_description="Logout the currently authenticated user by blacklisting their refresh token.",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'refresh': openapi.Schema(
+                type=openapi.TYPE_STRING,
+                description='Refresh token to blacklist'
+            )
+        }
+    ),
     responses={
-        200: openapi.Response("Logged out successfully"),
-        401: "Unauthorized"
+        200: openapi.Response(description="Logout successful."),
+        401: openapi.Response(description="Unauthorized. User is not authenticated."),
     }
 )
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
-    logout(request)
+    try:
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+    except Exception:
+        pass
+
     return Response({"message": "Logged out successfully"})

@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from rest_framework_simplejwt.views import TokenRefreshView
 
 
 # Swagger configuration
@@ -42,7 +43,7 @@ def home_view(request):
             </style>
         </head>
         <body>
-            <h1>🚀 Trackify API</h1>
+            <h1>🔗 Trackify API</h1>
 
             <div class="section">
                 <h3>📄 API Docs</h3>
@@ -73,7 +74,10 @@ urlpatterns = [
     # Home
     path('', home_view, name='home'),
 
-    path('api-auth/', include('rest_framework.urls')),
+    # path('api-auth/', include('rest_framework.urls')),
+
+    # JWT token refresh
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 
     # Accounts (auth + employees)
     path('api/accounts/', include('accounts.urls')),
@@ -92,6 +96,3 @@ urlpatterns = [
     re_path(r'^api/docs/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     re_path(r'^api/redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
-
-
-# // Incorrect, update th

@@ -192,7 +192,8 @@ class EmployeeTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(len(response.data) >= 2)
+        # 👇 Updated for pagination
+        self.assertTrue(len(response.data['results']) >= 2)
 
     def test_retrieve_employee(self):
         self.client.force_authenticate(user=self.emp1)
@@ -217,8 +218,6 @@ class EmployeeTests(APITestCase):
         }
 
         response = self.client.put(url, data, format="json")
-
-        # print(response.data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["name"], "HR Updated Name")

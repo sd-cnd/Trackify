@@ -28,13 +28,13 @@ class AttendanceAdmin(admin.ModelAdmin):
 
     autocomplete_fields = ['employee', 'project']
 
-    # ✅ FILTER PROJECT AUTOCOMPLETE BASED ON EMPLOYEE
+    # FILTER PROJECT AUTOCOMPLETE BASED ON EMPLOYEE
     def get_search_results(self, request, queryset, search_term):
         queryset, use_distinct = super().get_search_results(
             request, queryset, search_term
         )
 
-        # 👇 Only apply for project field
+        # Only apply for project field
         if request.GET.get("field_name") == "project":
 
             employee_id = request.GET.get("employee")
@@ -48,7 +48,7 @@ class AttendanceAdmin(admin.ModelAdmin):
 
         return queryset, use_distinct
 
-    # ✅ HOLIDAY + LEAVE VALIDATION
+    # HOLIDAY + LEAVE VALIDATION
     def save_model(self, request, obj, form, change):
         allowed, message = can_mark_attendance(obj.employee, obj.date)
 

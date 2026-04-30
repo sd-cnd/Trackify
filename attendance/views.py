@@ -23,6 +23,8 @@ class MonthlyAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
+        operation_summary="Get Monthly Attendance",
+        operation_description="Returns day-by-day attendance status for an employee for a given month and year. Status can be PRESENT, ABSENT, LEAVE, or HOLIDAY. Access is role-based: EMPLOYEE can only view their own, PROJECT_HR can view employees in their projects, GLOBAL_HR can view all.",
         manual_parameters=[
             openapi.Parameter(
                 'employee',
@@ -34,27 +36,26 @@ class MonthlyAttendanceView(APIView):
             openapi.Parameter(
                 'month',
                 openapi.IN_QUERY,
-                description="Month number (1-12)",
+                description="Month number between 1 and 12 (required)",
                 type=openapi.TYPE_INTEGER,
                 required=True
             ),
             openapi.Parameter(
                 'year',
                 openapi.IN_QUERY,
-                description="Year (e.g. 2024)",
+                description="Year e.g. 2024 (required)",
                 type=openapi.TYPE_INTEGER,
                 required=True
             ),
         ],
         responses={
-            200: "Monthly attendance data",
-            400: "Invalid month/year or missing employee",
-            403: "Not allowed",
-            404: "Invalid employee"
+            200: openapi.Response(description="Monthly attendance data returned successfully."),
+            400: openapi.Response(description="Bad Request. Employee ID, month, or year is missing or invalid."),
+            403: openapi.Response(description="Forbidden. You do not have permission to view this employee's attendance."),
+            404: openapi.Response(description="Not Found. Employee does not exist."),
         }
     )
     def get(self, request):
-
         user = request.user
         employee_id = request.GET.get("employee")
 
@@ -75,8 +76,6 @@ class MonthlyAttendanceView(APIView):
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return Response({"error": "Invalid employee"}, status=404)
-
-        # 🔐 ROLE-BASED ACCESS
 
         if user.role == "EMPLOYEE":
             if user.id != employee.id:
@@ -148,12 +147,21 @@ class MonthlyAttendanceView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
-# ✅ FIXED CREATE API
 class AttendanceCreateView(CreateAPIView):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_summary="Mark Attendance",
+        operation_description="Mark attendance for an employee. EMPLOYEE can only mark their own attendance. PROJECT_HR can mark for employees in their projects. GLOBAL_HR can mark for anyone.",
+        responses={
+            201: openapi.Response(description="Attendance marked successfully."),
+            400: openapi.Response(description="Bad Request. Employee ID is missing or attendance already marked for this date."),
+            403: openapi.Response(description="Forbidden. You do not have permission to mark attendance for this employee."),
+            404: openapi.Response(description="Not Found. Employee does not exist."),
+        }
+    )
     def create(self, request, *args, **kwargs):
         user = request.user
         employee_id = request.data.get("employee")
@@ -165,8 +173,6 @@ class AttendanceCreateView(CreateAPIView):
             employee = Employee.objects.get(id=employee_id)
         except Employee.DoesNotExist:
             return Response({"error": "Invalid employee"}, status=404)
-
-        # 🔐 ROLE-BASED ACCESS
 
         if user.role == "EMPLOYEE":
             if user.id != employee.id:
@@ -190,5 +196,4 @@ class AttendanceCreateView(CreateAPIView):
         else:
             return Response({"error": "Role not supported"}, status=403)
 
-        # ✅ normal DRF flow
         return super().create(request, *args, **kwargs)

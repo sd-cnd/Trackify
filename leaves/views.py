@@ -2,7 +2,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, serializers
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from datetime import date
 import calendar
 
@@ -14,9 +13,9 @@ from accounts.models import Employee
 from projects.models import ProjectMembership
 
 
-# -----------------------------
+# =========================
 # Swagger Serializers
-# -----------------------------
+# =========================
 
 class ApplyLeaveSerializer(serializers.Serializer):
     leave_type = serializers.CharField()
@@ -28,14 +27,21 @@ class ApproveLeaveSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["APPROVED", "REJECTED"])
 
 
-# -----------------------------
+# =========================
 # APPLY LEAVE
-# -----------------------------
+# =========================
+
 class ApplyLeaveView(APIView):
 
     @swagger_auto_schema(
+        operation_summary="Apply for Leave",
+        operation_description="Submit a leave application for the currently authenticated employee.",
         request_body=ApplyLeaveSerializer,
-        responses={200: "Leave applied successfully"}
+        responses={
+            200: openapi.Response(description="Leave applied successfully."),
+            400: openapi.Response(description="Bad Request. Invalid or missing leave data."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+        }
     )
     def post(self, request):
         user = request.user
@@ -52,11 +58,20 @@ class ApplyLeaveView(APIView):
         return Response({"message": "Leave applied successfully"})
 
 
-# -----------------------------
+# =========================
 # MY LEAVES
-# -----------------------------
+# =========================
+
 class MyLeavesView(APIView):
 
+    @swagger_auto_schema(
+        operation_summary="Get My Leaves",
+        operation_description="Returns all leave applications submitted by the currently authenticated employee.",
+        responses={
+            200: openapi.Response(description="List of leave applications returned successfully."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+        }
+    )
     def get(self, request):
         leaves = Leave.objects.filter(employee=request.user)
 
@@ -74,17 +89,21 @@ class MyLeavesView(APIView):
         return Response(data)
 
 
-# -----------------------------
+# =========================
 # APPROVE / REJECT
-# -----------------------------
+# =========================
+
 class ApproveLeaveView(APIView):
 
     @swagger_auto_schema(
+        operation_summary="Approve or Reject Leave",
+        operation_description="Approve or reject a leave application by ID. GLOBAL_HR can approve any leave. PROJECT_HR can only approve leaves for employees in their projects.",
         request_body=ApproveLeaveSerializer,
         responses={
-            200: "Leave approved/rejected successfully",
-            400: "Invalid action",
-            403: "Not authorized"
+            200: openapi.Response(description="Leave approved or rejected successfully."),
+            400: openapi.Response(description="Bad Request. Action must be APPROVED or REJECTED."),
+            403: openapi.Response(description="Forbidden. You are not authorized to approve this leave."),
+            404: openapi.Response(description="Not Found. Leave application does not exist."),
         }
     )
     def patch(self, request, pk):
@@ -123,21 +142,29 @@ class ApproveLeaveView(APIView):
         return False
 
 
-# -----------------------------
-# LEAVE BALANCE API
-# -----------------------------
+# =========================
+# LEAVE BALANCE
+# =========================
+
 class LeaveBalanceView(APIView):
 
     @swagger_auto_schema(
+        operation_summary="Get Leave Balance",
+        operation_description="Returns the leave balance for the currently authenticated employee for a given year. Shows total, taken, and remaining days for each leave type: EL, CL, SL, and OL.",
         manual_parameters=[
             openapi.Parameter(
                 'year',
                 openapi.IN_QUERY,
-                description="Year to fetch leave balance for (default: current year)",
-                type=openapi.TYPE_INTEGER
+                description="Year to fetch leave balance for. Defaults to current year.",
+                type=openapi.TYPE_INTEGER,
+                required=False
             )
         ],
-        responses={200: "Leave balance data", 404: "Quota not found"}
+        responses={
+            200: openapi.Response(description="Leave balance returned successfully."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+            404: openapi.Response(description="Not Found. Leave quota not found for this employee and year."),
+        }
     )
     def get(self, request):
         user = request.user
@@ -177,11 +204,21 @@ class LeaveBalanceView(APIView):
         return Response(data)
 
 
-# -----------------------------
-# TEAM LEAVES (HR VIEW)
-# -----------------------------
+# =========================
+# TEAM LEAVES
+# =========================
+
 class TeamLeavesView(APIView):
 
+    @swagger_auto_schema(
+        operation_summary="Get Team Leaves",
+        operation_description="Returns all leave applications for the HR's team. GLOBAL_HR sees all leaves. PROJECT_HR sees only leaves for employees in their active projects. EMPLOYEE role is not authorized.",
+        responses={
+            200: openapi.Response(description="Team leave list returned successfully."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+            403: openapi.Response(description="Forbidden. Only HR roles can access team leaves."),
+        }
+    )
     def get(self, request):
         user = request.user
 
@@ -213,11 +250,20 @@ class TeamLeavesView(APIView):
         return Response(data)
 
 
-# -----------------------------
-# WHO IS ON LEAVE TODAY
-# -----------------------------
+# =========================
+# TODAY ON LEAVE
+# =========================
+
 class TodayOnLeaveView(APIView):
 
+    @swagger_auto_schema(
+        operation_summary="Who is on Leave Today",
+        operation_description="Returns a list of employees on approved leave today. GLOBAL_HR sees all. PROJECT_HR sees only their project employees. EMPLOYEE sees only themselves.",
+        responses={
+            200: openapi.Response(description="List of employees on leave today returned successfully."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+        }
+    )
     def get(self, request):
         user = request.user
         today = date.today()
@@ -255,27 +301,35 @@ class TodayOnLeaveView(APIView):
         return Response(data)
 
 
-# -----------------------------
+# =========================
 # MONTHLY CALENDAR
-# -----------------------------
+# =========================
+
 class MonthlyCalendarView(APIView):
 
     @swagger_auto_schema(
+        operation_summary="Monthly Leave Calendar",
+        operation_description="Returns a day-by-day calendar of approved leaves for a given month and year. GLOBAL_HR sees all employees. PROJECT_HR sees only their project employees. EMPLOYEE sees only their own leaves.",
         manual_parameters=[
             openapi.Parameter(
                 'month',
                 openapi.IN_QUERY,
-                description="Month number (1-12, default: current month)",
-                type=openapi.TYPE_INTEGER
+                description="Month number between 1 and 12. Defaults to current month.",
+                type=openapi.TYPE_INTEGER,
+                required=False
             ),
             openapi.Parameter(
                 'year',
                 openapi.IN_QUERY,
-                description="Year (default: current year)",
-                type=openapi.TYPE_INTEGER
+                description="Year e.g. 2024. Defaults to current year.",
+                type=openapi.TYPE_INTEGER,
+                required=False
             ),
         ],
-        responses={200: "Monthly calendar with leave data"}
+        responses={
+            200: openapi.Response(description="Monthly leave calendar returned successfully."),
+            401: openapi.Response(description="Unauthorized. Authentication credentials were not provided."),
+        }
     )
     def get(self, request):
         user = request.user

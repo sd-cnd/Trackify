@@ -16,7 +16,7 @@ from .serializers import AttendanceSerializer
 
 
 # =========================
-# 🧪 MODEL TESTS
+#      MODEL TESTS
 # =========================
 class AttendanceModelTest(TestCase):
 
@@ -84,7 +84,7 @@ class AttendanceModelTest(TestCase):
                 status="PRESENT"
             )
 
-    # 🆕 Multiple projects same day
+    # Multiple projects same day
     def test_multiple_projects_same_day(self):
         project2 = Project.objects.create(
             project_name="P2",
@@ -107,7 +107,7 @@ class AttendanceModelTest(TestCase):
                 status="PRESENT"
             )
 
-    # 🆕 Partial time allowed
+    # Partial time allowed
     def test_only_checkin_without_checkout(self):
         attendance = Attendance.objects.create(
             employee=self.employee,
@@ -121,7 +121,7 @@ class AttendanceModelTest(TestCase):
 
 
 # =========================
-# 🧪 API TESTS
+#       API TESTS
 # =========================
 class MonthlyAttendanceAPITest(APITestCase):
 
@@ -282,7 +282,7 @@ class MonthlyAttendanceAPITest(APITestCase):
         leave_entry = next(d for d in response.data if d["date"].day == 15)
         self.assertEqual(leave_entry["status"], "LEAVE")
 
-    # 🆕 Last day boundary
+    # Last day boundary
     def test_last_day_of_month(self):
         self.client.force_authenticate(user=self.employee)
 
@@ -294,7 +294,7 @@ class MonthlyAttendanceAPITest(APITestCase):
 
         self.assertEqual(len(response.data), 28)
 
-    # 🆕 No attendance month
+    # No attendance month
     def test_no_attendance_month(self):
         self.client.force_authenticate(user=self.employee)
 
@@ -376,11 +376,6 @@ class MonthlyAttendanceInvalidInputTest(APITestCase):
         })
         self.assertEqual(response.status_code, 400)
 
-    
-
-
-   
-
 
 class AttendanceCreateAPITest(APITestCase):
 
@@ -430,7 +425,7 @@ class AttendanceCreateAPITest(APITestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 400)
 
-    # 🆕 Unauthorized marking
+    # Unauthorized marking
     def test_employee_cannot_mark_others_attendance(self):
         other = Employee.objects.create_user(
             email="other@test.com",
@@ -449,7 +444,7 @@ class AttendanceCreateAPITest(APITestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 403)
 
-    # 🆕 Missing fields
+    # Missing fields
     def test_missing_fields_should_fail(self):
         response = self.client.post(self.url, {
             "employee": self.employee.id
@@ -457,7 +452,7 @@ class AttendanceCreateAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 400)
 
-    # 🆕 Invalid project
+    # Invalid project
     def test_invalid_project_should_fail(self):
         data = {
             "employee": self.employee.id,

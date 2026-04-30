@@ -14,7 +14,6 @@ class EmployeeAdmin(UserAdmin):
 
     ordering = ("email",)
 
-    # 🔥 Important fields
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         ("Personal Info", {"fields": ("name", "designation", "role")}),
