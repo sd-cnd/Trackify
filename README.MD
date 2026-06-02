@@ -5,7 +5,7 @@
 ![DRF](https://img.shields.io/badge/DRF-3.16.1-red?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue?style=flat-square)
 ![JWT](https://img.shields.io/badge/Auth-JWT-orange?style=flat-square)
-![Railway](https://img.shields.io/badge/Deployed-Railway-purple?style=flat-square)
+![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?style=flat-square)
 ![Tests](https://img.shields.io/badge/Tests-72%20Passing-brightgreen?style=flat-square)
 
 A production-ready **Human Resource Management System** built with Django and Django REST Framework. Trackify handles employee management, project allocations, attendance tracking, and leave management with a robust role-based access control system.
@@ -14,9 +14,9 @@ A production-ready **Human Resource Management System** built with Django and Dj
 
 ## Live Demo
 
-- **API Base URL:** https://web-production-2669d.up.railway.app
-- **Swagger UI:** https://web-production-2669d.up.railway.app/api/docs/
-- **ReDoc:** https://web-production-2669d.up.railway.app/api/redoc/
+- **API Base URL:** https://trackify-cie8.onrender.com/
+- **Swagger UI:** https://trackify-cie8.onrender.com/api/docs/
+- **ReDoc:** https://trackify-cie8.onrender.com/api/redoc/
 
 ---
 
@@ -29,7 +29,7 @@ A production-ready **Human Resource Management System** built with Django and Dj
 | Database | PostgreSQL (Neon) |
 | API Documentation | drf-yasg (Swagger UI + ReDoc) |
 | Filtering | django-filter |
-| Deployment | Railway |
+| Deployment | Render |
 | Static Files | Whitenoise |
 | Testing | Django Test Framework |
 
@@ -287,4 +287,4 @@ All endpoints are now accessible based on your role.
 
 **Sumit Dey**
 - GitHub: [sd-cnd](https://github.com/sd-cnd)
-- Live API: [Trackify on Railway](https://web-production-2669d.up.railway.app)
+- Live API: [Trackify on Render](https://trackify-cie8.onrender.com/)
